@@ -1,13 +1,18 @@
 
 "use strict";
 
-// MAPA V1.2 · GitHub Pages · Sin servidores propios
+// MAPA V1.3 - GitHub Pages
+// Compatible con el almacenamiento anterior
+
 const STORAGE_KEY = "maprecos_clientes_v1";
 const STATS_KEY = "maprecos_juegos_v12";
 const CENTRO = [39.65, -0.35];
+
 const $ = id => document.getElementById(id);
 
-const TILE_URL = "https://tile.openstreetmap.org/{z}/{x}/{y}.png";
+const TILE_URL =
+  "https://tile.openstreetmap.org/{z}/{x}/{y}.png";
+
 const TILE_OPTIONS = {
   maxZoom: 19,
   attribution:
@@ -17,12 +22,14 @@ const TILE_OPTIONS = {
 
 let clientes = [];
 let referenciasMarcadores = new Map();
+
 let clienteEditando = null;
 let ubicacionTemporal = null;
 let marcadorTemporal = null;
 let seleccionandoPunto = false;
 let importando = false;
 let temporizadorToast = null;
+
 let mapaJuego = null;
 let capasJuego = null;
 let sesion = null;
@@ -34,12 +41,20 @@ let estadisticas = {
   aprendizaje: {}
 };
 
-const mapa = L.map("map").setView(CENTRO, 9);
-L.tileLayer(TILE_URL, TILE_OPTIONS).addTo(mapa);
+// ==========================================
+// MAPA PRINCIPAL
+// ==========================================
 
-// ================================
-// FUNCIONES COMUNES
-// ================================
+const mapa = L.map("map").setView(CENTRO, 9);
+
+L.tileLayer(
+  TILE_URL,
+  TILE_OPTIONS
+).addTo(mapa);
+
+// ==========================================
+// UTILIDADES
+// ==========================================
 
 function normalizar(valor) {
   return String(valor ?? "")
@@ -97,7 +112,9 @@ function boton(texto, accion, clase = "") {
   const b = document.createElement("button");
   b.type = "button";
   b.textContent = texto;
+
   if (clase) b.className = clase;
+
   b.addEventListener("click", accion);
   return b;
 }
@@ -114,7 +131,7 @@ function barajar(array) {
 }
 
 function distanciaKm(a, b) {
-  // Distancia en línea recta, no por carretera.
+  // Distancia geográfica en línea recta.
   const rad = Math.PI / 180;
   const dLat = (b.lat - a.lat) * rad;
   const dLng = (b.lng - a.lng) * rad;
@@ -133,9 +150,9 @@ function claveCliente(c) {
   return `${normalizar(c.nombre)}|${normalizar(c.localidad)}`;
 }
 
-// ================================
-// ALMACENAMIENTO LOCAL
-// ================================
+// ==========================================
+// ALMACENAMIENTO
+// ==========================================
 
 function leerDatos() {
   try {
@@ -188,14 +205,17 @@ function persistirClientes() {
       STORAGE_KEY,
       JSON.stringify(clientes)
     );
+
     return true;
 
   } catch (error) {
     console.error(error);
+
     avisar(
       "No se pudieron guardar los cambios. " +
       "Exporta una copia de seguridad."
     );
+
     return false;
   }
 }
@@ -211,9 +231,9 @@ function persistirEstadisticas() {
   }
 }
 
-// ================================
-// ESTADÍSTICAS, LISTA Y MAPA
-// ================================
+// ==========================================
+// INTERFAZ DE CLIENTES
+// ==========================================
 
 function refrescar() {
   $("totalClientes").textContent = clientes.length;
@@ -224,9 +244,12 @@ function refrescar() {
       .map(c => normalizar(c.localidad))
   ).size;
 
-  const ubicados = clientes.filter(hayCoordenadas).length;
+  const ubicados = clientes.filter(
+    hayCoordenadas
+  ).length;
 
   $("totalUbicados").textContent = ubicados;
+
   $("totalPendientes").textContent =
     clientes.length - ubicados;
 
@@ -237,22 +260,31 @@ function refrescar() {
 
 function refrescarLista() {
   const cont = $("listaClientes");
-  const texto = normalizar($("buscarCliente").value);
+
+  const texto = normalizar(
+    $("buscarCliente").value
+  );
+
   const filtro = $("filtroClientes").value;
 
   cont.replaceChildren();
 
   const visibles = clientes.filter(c => {
-    if (filtro === "ubicados" && !hayCoordenadas(c)) {
-      return false;
-    }
+    if (
+      filtro === "ubicados" &&
+      !hayCoordenadas(c)
+    ) return false;
 
-    if (filtro === "pendientes" && hayCoordenadas(c)) {
-      return false;
-    }
+    if (
+      filtro === "pendientes" &&
+      hayCoordenadas(c)
+    ) return false;
 
-    return [c.nombre, c.localidad, c.provincia]
-      .some(v => normalizar(v).includes(texto));
+    return [
+      c.nombre,
+      c.localidad,
+      c.provincia
+    ].some(v => normalizar(v).includes(texto));
 
   }).sort((a, b) =>
     a.nombre.localeCompare(b.nombre, "es")
@@ -260,16 +292,20 @@ function refrescarLista() {
 
   if (!visibles.length) {
     const p = document.createElement("p");
+
     p.className = "empty";
+
     p.textContent = clientes.length
       ? "No hay resultados."
       : "Importa tu Excel o añade un cliente.";
+
     cont.appendChild(p);
     return;
   }
 
   visibles.forEach(c => {
     const item = document.createElement("div");
+
     item.className = "client-item" +
       (hayCoordenadas(c) ? "" : " pending");
 
@@ -298,13 +334,21 @@ function refrescarLista() {
     );
 
     acciones.appendChild(
-      boton("Eliminar", () => eliminarCliente(c.id), "danger")
+      boton(
+        "Eliminar",
+        () => eliminarCliente(c.id),
+        "danger"
+      )
     );
 
     item.append(nombre, donde, acciones);
     cont.appendChild(item);
   });
 }
+
+// ==========================================
+// MARCADORES
+// ==========================================
 
 function iconoPunto(numero) {
   return L.divIcon({
@@ -319,9 +363,9 @@ function iconoPunto(numero) {
 }
 
 function refrescarMarcadores() {
-  referenciasMarcadores.forEach(m => {
-    mapa.removeLayer(m);
-  });
+  referenciasMarcadores.forEach(m =>
+    mapa.removeLayer(m)
+  );
 
   referenciasMarcadores.clear();
 
@@ -343,14 +387,16 @@ function refrescarMarcadores() {
 
     const m = L.marker(
       [primero.lat, primero.lng],
-      { icon: iconoPunto(grupo.length) }
+      {icon: iconoPunto(grupo.length)}
     ).addTo(mapa);
 
     const contenido = document.createElement("div");
 
     const titulo = document.createElement("div");
     titulo.className = "popup-title";
-    titulo.textContent = primero.localidad || "Clientes";
+
+    titulo.textContent =
+      primero.localidad || "Clientes";
 
     const lista = document.createElement("ul");
     lista.className = "popup-list";
@@ -360,6 +406,7 @@ function refrescarMarcadores() {
       li.textContent = c.nombre;
 
       lista.appendChild(li);
+
       referenciasMarcadores.set(c.id, m);
     });
 
@@ -378,9 +425,11 @@ function verCliente(id) {
 
   mostrarVista("mapa");
 
-  mapa.flyTo([c.lat, c.lng], 14, {
-    duration: .7
-  });
+  mapa.flyTo(
+    [c.lat, c.lng],
+    14,
+    {duration: .7}
+  );
 
   setTimeout(() => {
     referenciasMarcadores.get(id)?.openPopup();
@@ -388,11 +437,12 @@ function verCliente(id) {
 }
 
 function verTodos() {
-  const ubicados = clientes.filter(hayCoordenadas);
+  const ubicados = clientes.filter(
+    hayCoordenadas
+  );
 
   if (!ubicados.length) {
-    mapa.setView(CENTRO, 9);
-    return;
+    return mapa.setView(CENTRO, 9);
   }
 
   mapa.fitBounds(
@@ -406,9 +456,9 @@ function verTodos() {
   );
 }
 
-// ================================
+// ==========================================
 // COORDENADAS DEL EXCEL
-// ================================
+// ==========================================
 
 function leerCoordenadas(valor) {
   if (
@@ -425,7 +475,7 @@ function leerCoordenadas(valor) {
     .replace(/[’′]/g, "'")
     .replace(/[”″]/g, '"');
 
-  // Formato Google Maps:
+  // Formato:
   // 39°30'59.7"N 0°27'55.7"W
 
   const dms = [
@@ -444,6 +494,7 @@ function leerCoordenadas(valor) {
       const segundos = Number(
         p[3].replace(",", ".")
       );
+
       const dir = p[4].toUpperCase();
 
       if (
@@ -451,9 +502,7 @@ function leerCoordenadas(valor) {
         segundos >= 60 ||
         (["N", "S"].includes(dir) && grados > 90) ||
         (["E", "W"].includes(dir) && grados > 180)
-      ) {
-        return null;
-      }
+      ) return null;
 
       let n =
         grados +
@@ -475,10 +524,10 @@ function leerCoordenadas(valor) {
 
     return lat === null || lng === null
       ? null
-      : { lat, lng };
+      : {lat, lng};
   }
 
-  // También admite coordenadas decimales.
+  // Coordenadas decimales separadas por ; o espacio
 
   const dec = t.match(
     /^\s*(-?\d{1,2}(?:[.,]\d+)?)\s*[;\s]+\s*(-?\d{1,3}(?:[.,]\d+)?)\s*$/
@@ -488,6 +537,7 @@ function leerCoordenadas(valor) {
     const lat = Number(
       dec[1].replace(",", ".")
     );
+
     const lng = Number(
       dec[2].replace(",", ".")
     );
@@ -500,9 +550,9 @@ function leerCoordenadas(valor) {
   return null;
 }
 
-// ================================
-// IMPORTACIÓN DEL EXCEL
-// ================================
+// ==========================================
+// IMPORTAR EXCEL
+// ==========================================
 
 async function importarExcel(e) {
   const archivo = e.target.files[0];
@@ -510,6 +560,7 @@ async function importarExcel(e) {
   if (!archivo || importando) return;
 
   importando = true;
+
   $("btnExcel").disabled = true;
   $("btnExcel").textContent = "Leyendo Excel…";
 
@@ -522,7 +573,7 @@ async function importarExcel(e) {
 
     const libro = XLSX.read(
       await archivo.arrayBuffer(),
-      { type: "array" }
+      {type: "array"}
     );
 
     const hoja = libro.SheetNames.find(
@@ -544,7 +595,9 @@ async function importarExcel(e) {
       }
     );
 
-    const cab = (filas[0] || []).map(normalizar);
+    const cab = (filas[0] || []).map(
+      normalizar
+    );
 
     const posNombre = cab.indexOf("cliente");
     const posMunicipio = cab.indexOf("municipio");
@@ -640,7 +693,10 @@ async function importarExcel(e) {
 
     const anterior = clientes;
 
-    clientes = [...manuales, ...nuevos];
+    clientes = [
+      ...manuales,
+      ...nuevos
+    ];
 
     if (!persistirClientes()) {
       clientes = anterior;
@@ -662,14 +718,15 @@ async function importarExcel(e) {
   } finally {
     e.target.value = "";
     importando = false;
+
     $("btnExcel").disabled = false;
     $("btnExcel").textContent = "📊 Importar clientes";
   }
 }
 
-// ================================
+// ==========================================
 // AÑADIR Y EDITAR CLIENTES
-// ================================
+// ==========================================
 
 function abrirFormulario(id = null) {
   seleccionandoPunto = false;
@@ -678,17 +735,21 @@ function abrirFormulario(id = null) {
 
   $("formCliente").reset();
 
-  const c = clientes.find(x => x.id === id);
+  const c = clientes.find(
+    x => x.id === id
+  );
 
   $("modalTitulo").textContent =
     c ? "Editar cliente" : "Añadir cliente";
 
   $("nombreCliente").value = c?.nombre || "";
   $("localidadCliente").value = c?.localidad || "";
-  $("provinciaCliente").value = c?.provincia || "Valencia";
+
+  $("provinciaCliente").value =
+    c?.provincia || "Valencia";
 
   ubicacionTemporal = c && hayCoordenadas(c)
-    ? { lat: c.lat, lng: c.lng }
+    ? {lat: c.lat, lng: c.lng}
     : null;
 
   $("textoUbicacion").textContent = ubicacionTemporal
@@ -721,7 +782,7 @@ function cerrarFormulario() {
 }
 
 function definirUbicacion(lat, lng) {
-  ubicacionTemporal = { lat, lng };
+  ubicacionTemporal = {lat, lng};
 
   $("textoUbicacion").textContent =
     `📍 ${lat.toFixed(6)}, ${lng.toFixed(6)}`;
@@ -741,8 +802,8 @@ function definirUbicacion(lat, lng) {
 }
 
 function buscarMunicipio() {
-  // Búsqueda local entre clientes ya registrados.
-  // No utiliza servicios de geocodificación.
+  // Búsqueda entre los clientes ya registrados.
+  // No necesita geocodificación.
 
   const municipio = normalizar(
     $("localidadCliente").value
@@ -754,10 +815,9 @@ function buscarMunicipio() {
     );
   }
 
-  const referencia = clientes.find(
-    c =>
-      normalizar(c.localidad) === municipio &&
-      hayCoordenadas(c)
+  const referencia = clientes.find(c =>
+    normalizar(c.localidad) === municipio &&
+    hayCoordenadas(c)
   );
 
   if (!referencia) {
@@ -844,9 +904,6 @@ function guardarFormulario(e) {
       provincia,
       lat: ubicacionTemporal?.lat ?? null,
       lng: ubicacionTemporal?.lng ?? null,
-
-      // Las correcciones manuales se conservan
-      // cuando vuelvas a importar un Excel.
       origen: "manual"
     };
 
@@ -871,6 +928,7 @@ function guardarFormulario(e) {
 
   cerrarFormulario();
   refrescar();
+
   avisar("Cliente guardado correctamente.");
 }
 
@@ -881,9 +939,7 @@ function eliminarCliente(id) {
 
   if (!confirm(
     `¿Eliminar el cliente ${c.nombre}?`
-  )) {
-    return;
-  }
+  )) return;
 
   const anterior = clientes;
 
@@ -900,23 +956,19 @@ function eliminarCliente(id) {
   avisar("Cliente eliminado.");
 }
 
-// ================================
+// ==========================================
 // COPIAS DE SEGURIDAD
-// ================================
+// ==========================================
 
 function exportarJSON() {
   const archivo = new Blob(
     [
-      JSON.stringify(
-        {
-          aplicacion: "MAPRECOS",
-          version: 2,
-          fecha: new Date().toISOString(),
-          clientes
-        },
-        null,
-        2
-      )
+      JSON.stringify({
+        aplicacion: "MAPRECOS",
+        version: 2,
+        fecha: new Date().toISOString(),
+        clientes
+      }, null, 2)
     ],
     {
       type: "application/json"
@@ -965,18 +1017,14 @@ async function importarJSON(e) {
 
     if (!confirm(
       `¿Sustituir los clientes actuales por los ${ids.length} de la copia?`
-    )) {
-      return;
-    }
+    )) return;
 
     const anterior = clientes;
 
-    clientes = contenido.clientes.map(
-      c => ({
-        ...c,
-        origen: c.origen || "manual"
-      })
-    );
+    clientes = contenido.clientes.map(c => ({
+      ...c,
+      origen: c.origen || "manual"
+    }));
 
     if (!persistirClientes()) {
       clientes = anterior;
@@ -990,6 +1038,7 @@ async function importarJSON(e) {
 
   } catch (error) {
     console.error(error);
+
     avisar(
       "No se ha podido importar el archivo JSON."
     );
@@ -999,9 +1048,9 @@ async function importarJSON(e) {
   }
 }
 
-// ================================
-// PANTALLAS
-// ================================
+// ==========================================
+// NAVEGACIÓN
+// ==========================================
 
 function mostrarVista(vista) {
   const esMapa = vista === "mapa";
@@ -1046,135 +1095,378 @@ function refrescarEstadisticas() {
     estadisticas.record || 0;
 }
 
+// ==========================================
+// MOTOR DE JUEGOS V1.3
+// ==========================================
+
+function detenerRelojes() {
+  if (!sesion) return;
+
+  if (sesion.relojIntervalo) {
+    clearInterval(sesion.relojIntervalo);
+  }
+
+  if (sesion.espera) {
+    clearTimeout(sesion.espera);
+  }
+
+  sesion.relojIntervalo = null;
+  sesion.espera = null;
+}
+
 function volverCatalogo() {
+  detenerRelojes();
+
+  if (sesion) {
+    sesion.activa = false;
+  }
+
   sesion = null;
 
   $("partida").classList.add("hidden");
   $("catalogoJuegos").classList.remove("hidden");
+  $("relojJuego").classList.add("hidden");
 
   refrescarEstadisticas();
 }
 
-// ================================
-// JUEGOS: CONFIGURACIÓN
-// ================================
+// ==========================================
+// SELECCIÓN DE PREGUNTAS
+// ==========================================
 
-function candidatosOrdenados(lista) {
-  // Los clientes fallados aparecerán
-  // con mayor frecuencia en nuevas partidas.
+function candidatosLocalidad() {
+  // No preguntamos por nombres que aparecen
+  // en municipios diferentes, para evitar
+  // preguntas ambiguas.
 
-  return lista.map(c => {
-    const r = estadisticas.aprendizaje[c.id] || {
-      aciertos: 0,
-      fallos: 0
-    };
+  const nombres = new Map();
 
-    return {
-      c,
-      orden:
-        Math.random() /
-        (
-          1 + Math.max(
-            0,
-            r.fallos - r.aciertos
-          )
-        )
-    };
+  clientes
+    .filter(c => c.localidad.trim())
+    .forEach(c => {
+      const k = normalizar(c.nombre);
 
-  }).sort((a, b) =>
-    a.orden - b.orden
-  ).map(x => x.c);
+      if (!nombres.has(k)) {
+        nombres.set(k, new Set());
+      }
+
+      nombres.get(k).add(
+        normalizar(c.localidad)
+      );
+    });
+
+  return clientes.filter(c =>
+    c.localidad.trim() &&
+    nombres.get(normalizar(c.nombre))?.size === 1
+  );
 }
 
-function iniciarJuego(tipo) {
-  let candidatos = [];
-  let radio = 12;
+function zonasElegibles() {
+  const puntos = clientes.filter(
+    hayCoordenadas
+  );
 
-  if (tipo === "localidad") {
-    candidatos = clientes.filter(
-      c => c.localidad.trim()
-    );
+  for (const radio of [8, 12, 20]) {
+    const lista = puntos.filter(c => {
+      let cerca = 0;
+      let lejos = 0;
 
-    const localidades = new Set(
-      candidatos.map(
-        c => normalizar(c.localidad)
-      )
-    );
+      puntos.forEach(x => {
+        if (x.id === c.id) return;
 
-    if (
-      candidatos.length < 2 ||
-      localidades.size < 2
-    ) {
-      return avisar(
-        "Necesitas clientes de al menos dos municipios para jugar."
-      );
-    }
-
-  } else {
-    const puntos = clientes.filter(
-      hayCoordenadas
-    );
-
-    // Buscamos un radio con grupos de clientes
-    // y con suficientes opciones más lejanas.
-
-    for (const r of [8, 12, 20]) {
-      const elegibles = puntos.filter(c => {
-        const proximos = puntos.filter(
-          x =>
-            x.id !== c.id &&
-            distanciaKm(c, x) <= r
-        );
-
-        const lejanos = puntos.filter(
-          x =>
-            x.id !== c.id &&
-            distanciaKm(c, x) > r
-        );
-
-        return proximos.length >= 1 &&
-          lejanos.length >= 2;
+        if (distanciaKm(c, x) <= radio) {
+          cerca++;
+        } else {
+          lejos++;
+        }
       });
 
-      if (elegibles.length) {
-        candidatos = elegibles;
-        radio = r;
-        break;
-      }
-    }
+      return cerca >= 1 && lejos >= 2;
+    });
 
-    if (!candidatos.length) {
-      return avisar(
-        "Para jugar por zonas necesitas clientes " +
-        "ubicados cerca y otros más alejados."
-      );
+    if (lista.length) {
+      return {radio, lista};
     }
   }
 
+  return {
+    radio: 12,
+    lista: []
+  };
+}
+
+function candidatosParejas() {
+  return candidatosLocalidad();
+}
+
+function localidadesDistintas(lista) {
+  return new Set(
+    lista.map(c => normalizar(c.localidad))
+  ).size;
+}
+
+function prioridadCliente(c) {
+  const r =
+    estadisticas.aprendizaje[claveCliente(c)] ||
+    estadisticas.aprendizaje[c.id] ||
+    {aciertos: 0, fallos: 0};
+
+  return 1 + Math.max(
+    0,
+    (r.fallos || 0) - (r.aciertos || 0)
+  );
+}
+
+function elegirCliente(lista) {
+  if (!lista.length) return null;
+
+  const peso = lista.reduce(
+    (s, c) => s + prioridadCliente(c),
+    0
+  );
+
+  let n = Math.random() * peso;
+
+  for (const c of lista) {
+    n -= prioridadCliente(c);
+
+    if (n <= 0) {
+      return c;
+    }
+  }
+
+  return lista[lista.length - 1];
+}
+
+function sacarCliente(lista) {
+  if (!sesion) return null;
+
+  const sinRepetir = lista.filter(
+    c => !sesion.usados.has(c.id)
+  );
+
+  const elegidos = sinRepetir.length
+    ? sinRepetir
+    : lista;
+
+  const c = elegirCliente(elegidos);
+
+  if (c) {
+    sesion.usados.add(c.id);
+  }
+
+  return c;
+}
+
+function prepararParejas() {
+  const candidatos = candidatosParejas();
+
+  const localidadesUsadas = new Set();
+  const elegidos = [];
+
+  const sinRepetir = candidatos.filter(
+    c => !sesion.usados.has(c.id)
+  );
+
+  const resto = [
+    ...sinRepetir,
+    ...candidatos.filter(c => sesion.usados.has(c.id))
+  ];
+
+  while (
+    resto.length &&
+    elegidos.length < 5
+  ) {
+    const c = elegirCliente(resto);
+
+    resto.splice(
+      resto.indexOf(c),
+      1
+    );
+
+    const k = normalizar(c.localidad);
+
+    if (!localidadesUsadas.has(k)) {
+      localidadesUsadas.add(k);
+      elegidos.push(c);
+      sesion.usados.add(c.id);
+    }
+  }
+
+  return elegidos;
+}
+
+// ==========================================
+// INICIAR PARTIDAS
+// ==========================================
+
+function iniciarJuego(modo) {
+  detenerRelojes();
+
+  if (sesion) {
+    sesion.activa = false;
+  }
+
+  const listaLoc = candidatosLocalidad();
+
+  const listaCoord = clientes.filter(
+    hayCoordenadas
+  );
+
+  const zona = zonasElegibles();
+
+  const distintos = localidadesDistintas(
+    listaLoc
+  );
+
+  if (
+    ["localidad", "tiempo"].includes(modo) &&
+    distintos < 2
+  ) {
+    return avisar(
+      "Necesitas clientes de al menos dos municipios diferentes."
+    );
+  }
+
+  if (
+    modo === "zonas" &&
+    !zona.lista.length
+  ) {
+    return avisar(
+      "Para Domina las zonas necesitas clientes cercanos y otros alejados."
+    );
+  }
+
+  if (
+    modo === "ubicar" &&
+    !listaCoord.length
+  ) {
+    return avisar(
+      "Necesitas clientes con coordenadas para jugar en el mapa."
+    );
+  }
+
+  if (
+    modo === "parejas" &&
+    distintos < 3
+  ) {
+    return avisar(
+      "Para Une las parejas necesitas al menos tres municipios."
+    );
+  }
+
+  if (
+    modo === "final" &&
+    (
+      distintos < 4 ||
+      listaCoord.length < 2 ||
+      !zona.lista.length
+    )
+  ) {
+    return avisar(
+      "Para el Desafío final necesitas cuatro municipios, " +
+      "clientes ubicados y zonas con vecinos."
+    );
+  }
+
+  const planes = {
+    localidad: Array(10).fill("localidad"),
+    zonas: Array(10).fill("zonas"),
+    ubicar: Array(10).fill("ubicar"),
+    parejas: Array(3).fill("parejas"),
+    tiempo: [],
+
+    final: barajar([
+      "localidad",
+      "localidad",
+      "localidad",
+      "zonas",
+      "zonas",
+      "ubicar",
+      "ubicar",
+      "ubicar",
+      "parejas",
+      "parejas"
+    ])
+  };
+
+  const nombres = {
+    localidad: "Adivina la localidad",
+    zonas: "Domina las zonas",
+    ubicar: "Encuentra al cliente",
+    tiempo: "Contrarreloj",
+    parejas: "Une las parejas",
+    final: "Desafío final"
+  };
+
   sesion = {
-    tipo,
-    radio,
-    candidatos: candidatosOrdenados(candidatos),
+    modo,
+    plan: planes[modo],
     indice: 0,
-    total: Math.min(10, candidatos.length),
+
+    total: modo === "tiempo"
+      ? null
+      : planes[modo].length,
+
     puntos: 0,
     aciertos: 0,
     racha: 0,
+    errores: 0,
+
+    respondida: false,
+    activa: true,
+
+    usados: new Set(),
+    numero: 0,
     pregunta: null,
-    respondida: false
+
+    zona,
+    listaLoc,
+    listaCoord,
+
+    tiempo: modo === "tiempo"
+      ? 60
+      : modo === "final"
+        ? 180
+        : null,
+
+    fechaLimite: null,
+    relojIntervalo: null,
+    espera: null,
+
+    puntoElegido: null,
+
+    parejasElegidas: {
+      cliente: null,
+      municipio: null
+    },
+
+    parejasAcertadas: 0,
+    erroresRonda: 0
   };
+
+  $("nombreJuego").textContent =
+    nombres[modo];
 
   $("catalogoJuegos").classList.add("hidden");
   $("partida").classList.remove("hidden");
+
   $("zonaPregunta").classList.remove("hidden");
   $("resumenJuego").classList.add("hidden");
 
-  $("nombreJuego").textContent =
-    tipo === "localidad"
-      ? "Adivina la localidad"
-      : "Domina las zonas";
+  $("relojJuego").classList.toggle(
+    "hidden",
+    sesion.tiempo === null
+  );
 
-  siguientePregunta();
+  nuevaPregunta();
+
+  if (
+    sesion &&
+    sesion.tiempo !== null
+  ) {
+    arrancarReloj();
+  }
 
   window.scrollTo({
     top: 0,
@@ -1182,41 +1474,131 @@ function iniciarJuego(tipo) {
   });
 }
 
-// ================================
-// GENERADOR DE PREGUNTAS
-// ================================
+// ==========================================
+// TEMPORIZADOR
+// ==========================================
 
-function siguientePregunta() {
-  if (!sesion) return;
+function arrancarReloj() {
+  const s = sesion;
 
-  if (sesion.indice >= sesion.total) {
-    return terminarJuego();
+  s.fechaLimite =
+    Date.now() + s.tiempo * 1000;
+
+  pintarReloj();
+
+  s.relojIntervalo = setInterval(() => {
+    if (
+      sesion !== s ||
+      !s.activa
+    ) return;
+
+    s.tiempo = Math.max(
+      0,
+      Math.ceil(
+        (s.fechaLimite - Date.now()) / 1000
+      )
+    );
+
+    pintarReloj();
+
+    if (s.tiempo <= 0) {
+      terminarJuego(true);
+    }
+
+  }, 200);
+}
+
+function pintarReloj() {
+  if (
+    !sesion ||
+    sesion.tiempo === null
+  ) return;
+
+  const reloj = $("relojJuego");
+
+  reloj.textContent =
+    `⏱️ ${sesion.tiempo} s`;
+
+  reloj.classList.toggle(
+    "urgent",
+    sesion.tiempo <= 15
+  );
+
+  if (sesion.modo === "tiempo") {
+    $("barraProgreso").style.width =
+      `${100 * sesion.tiempo / 60}%`;
+  }
+}
+
+// ==========================================
+// GENERACIÓN DE PREGUNTAS
+// ==========================================
+
+function tipoDePregunta() {
+  return sesion.modo === "tiempo"
+    ? "localidad"
+    : sesion.plan[sesion.indice];
+}
+
+function nuevaPregunta() {
+  const s = sesion;
+
+  if (!s || !s.activa) return;
+
+  if (
+    s.total !== null &&
+    s.indice >= s.total
+  ) {
+    return terminarJuego(false);
   }
 
-  sesion.respondida = false;
+  s.respondida = false;
+  s.puntoElegido = null;
+  s.numero++;
 
-  const objetivo =
-    sesion.candidatos[sesion.indice];
+  s.erroresRonda = 0;
+  s.parejasAcertadas = 0;
 
-  sesion.pregunta =
-    sesion.tipo === "localidad"
-      ? crearPreguntaLocalidad(objetivo)
-      : crearPreguntaZonas(
-          objetivo,
-          sesion.radio
-        );
+  s.parejasElegidas = {
+    cliente: null,
+    municipio: null
+  };
 
-  $("contadorPregunta").textContent =
-    `Pregunta ${sesion.indice + 1} de ${sesion.total}`;
+  const tipo = tipoDePregunta();
 
-  $("rachaJuego").textContent =
-    `Racha: ${sesion.racha}`;
+  let q;
 
-  $("puntosJuego").textContent =
-    `${sesion.puntos} puntos`;
+  if (tipo === "localidad") {
+    q = preguntaLocalidad(
+      sacarCliente(s.listaLoc)
+    );
 
-  $("barraProgreso").style.width =
-    `${sesion.indice / sesion.total * 100}%`;
+  } else if (tipo === "zonas") {
+    q = preguntaZonas(
+      sacarCliente(s.zona.lista),
+      s.zona.radio
+    );
+
+  } else if (tipo === "ubicar") {
+    q = preguntaUbicar(
+      sacarCliente(s.listaCoord)
+    );
+
+  } else {
+    q = preguntaParejas(
+      prepararParejas()
+    );
+  }
+
+  s.pregunta = q;
+
+  $("respuestas").replaceChildren();
+  $("tableroParejas").replaceChildren();
+
+  $("tableroParejas").classList.add("hidden");
+  $("respuestas").classList.remove("hidden");
+
+  $("mapaJuegoWrap").classList.remove("locate");
 
   $("resultadoPregunta").className =
     "feedback hidden";
@@ -1225,70 +1607,101 @@ function siguientePregunta() {
 
   $("btnConfirmarZona").classList.toggle(
     "hidden",
-    sesion.tipo !== "zonas"
+    tipo !== "zonas"
   );
 
-  $("textoPregunta").textContent =
-    sesion.pregunta.texto;
+  $("btnConfirmarPunto").classList.toggle(
+    "hidden",
+    tipo !== "ubicar"
+  );
 
-  $("ayudaPregunta").textContent =
-    sesion.pregunta.ayuda;
+  $("btnConfirmarPunto").disabled = true;
 
-  representarOpciones();
+  $("textoPregunta").textContent = q.texto;
+  $("ayudaPregunta").textContent = q.ayuda;
 
-  if (sesion.tipo === "zonas") {
+  $("rachaJuego").textContent =
+    `Racha: ${s.racha}`;
+
+  $("puntosJuego").textContent =
+    `${s.puntos} puntos`;
+
+  $("contadorPregunta").textContent =
+    s.total === null
+      ? `Pregunta ${s.indice + 1} · 60 segundos`
+      : `Pregunta ${s.indice + 1} de ${s.total}`;
+
+  if (s.modo !== "tiempo") {
+    $("barraProgreso").style.width =
+      `${100 * s.indice / s.total}%`;
+  }
+
+  if (tipo === "localidad") {
+    mostrarOpcionesLocalidad(q);
+  }
+
+  if (tipo === "zonas") {
+    mostrarOpcionesZonas(q);
+  }
+
+  if (tipo === "parejas") {
+    mostrarTableroParejas(q);
+  }
+
+  if (
+    tipo === "zonas" ||
+    tipo === "ubicar"
+  ) {
     dibujarMiniMapa(false);
   } else {
     $("mapaJuegoWrap").classList.add("hidden");
   }
 }
 
-// ================================
-// JUEGO 1: ADIVINA LA LOCALIDAD
-// ================================
+// ==========================================
+// PREGUNTA DE LOCALIDADES
+// ==========================================
 
-function crearPreguntaLocalidad(c) {
-  const distintas = [
+function preguntaLocalidad(c) {
+  const otras = [
     ...new Map(
-      clientes
-        .filter(x => x.localidad.trim())
-        .map(x => [
+      sesion.listaLoc.map(
+        x => [
           normalizar(x.localidad),
           x.localidad
-        ])
+        ]
+      )
     ).values()
-  ];
-
-  const distractores = barajar(
-    distintas.filter(
-      x =>
-        normalizar(x) !== normalizar(c.localidad)
-    )
-  ).slice(0, 3);
+  ].filter(x =>
+    normalizar(x) !== normalizar(c.localidad)
+  );
 
   return {
+    tipo: "localidad",
     objetivo: c,
-    texto: `¿En qué localidad está ${c.nombre}?`,
+
+    texto:
+      `¿En qué localidad está ${c.nombre}?`,
+
     ayuda:
-      "Selecciona una respuesta. Después podrás " +
-      "comprobar su posición en el mapa.",
+      "Elige el municipio correcto entre las opciones.",
+
     opciones: barajar([
       c.localidad,
-      ...distractores
+      ...barajar(otras).slice(0, 3)
     ]),
+
     correcta: c.localidad
   };
 }
 
-// ================================
-// JUEGO 2: DOMINA LAS ZONAS
-// ================================
+// ==========================================
+// PREGUNTA DE ZONAS
+// ==========================================
 
-function crearPreguntaZonas(c, radio) {
-  const puntos = clientes.filter(
-    x =>
-      hayCoordenadas(x) &&
-      x.id !== c.id
+function preguntaZonas(c, radio) {
+  const puntos = sesion.listaCoord.filter(
+    x => x.id !== c.id
   );
 
   const cerca = barajar(
@@ -1303,99 +1716,328 @@ function crearPreguntaZonas(c, radio) {
     )
   ).slice(0, 3);
 
-  const opciones = barajar([
-    ...cerca,
-    ...lejos
-  ]);
-
   return {
+    tipo: "zonas",
     objetivo: c,
     radio,
+
     texto:
       `¿Qué clientes están a ${radio} km o menos de ${c.nombre}?`,
+
     ayuda:
-      "Marca todos los clientes cercanos entre estas opciones. " +
-      "Distancia en línea recta, no por carretera.",
-    opciones,
+      "Selecciona todos los clientes cercanos de la lista. " +
+      "La distancia es en línea recta.",
+
+    opciones: barajar([
+      ...cerca,
+      ...lejos
+    ]),
+
     correctos: new Set(
       cerca.map(x => x.id)
     )
   };
 }
 
-// ================================
-// MOSTRAR RESPUESTAS
-// ================================
+// ==========================================
+// PREGUNTA DE UBICACIÓN
+// ==========================================
 
-function representarOpciones() {
-  const cont = $("respuestas");
-  cont.replaceChildren();
+function preguntaUbicar(c) {
+  return {
+    tipo: "ubicar",
+    objetivo: c,
 
-  const q = sesion.pregunta;
+    texto: `¿Dónde está ${c.nombre}?`,
 
-  if (sesion.tipo === "localidad") {
-    q.opciones.forEach(op => {
-      const b = boton(
-        op,
-        () => responderLocalidad(op, b),
-        "answer"
+    ayuda:
+      "Mueve el mapa y pulsa donde creas que está. " +
+      "Confirma tu punto para ver cuántos kilómetros " +
+      "te has equivocado."
+  };
+}
+
+// ==========================================
+// PREGUNTA DE PAREJAS
+// ==========================================
+
+function preguntaParejas(lista) {
+  return {
+    tipo: "parejas",
+    pares: lista,
+
+    texto:
+      "Une cada cliente con su localidad",
+
+    ayuda:
+      "Pulsa primero un cliente y después su municipio. " +
+      "Cada pareja correcta suma puntos."
+  };
+}
+
+// ==========================================
+// MOSTRAR OPCIONES
+// ==========================================
+
+function mostrarOpcionesLocalidad(q) {
+  q.opciones.forEach(v => {
+    const b = boton(
+      v,
+      () => responderLocalidad(v),
+      "answer"
+    );
+
+    $("respuestas").appendChild(b);
+  });
+}
+
+function mostrarOpcionesZonas(q) {
+  q.opciones.forEach(c => {
+    const etiqueta = document.createElement("label");
+    etiqueta.className = "answer";
+
+    const input = document.createElement("input");
+    input.type = "checkbox";
+    input.value = c.id;
+
+    input.style.width = "auto";
+    input.style.marginRight = "9px";
+
+    input.addEventListener("change", () => {
+      etiqueta.classList.toggle(
+        "selected",
+        input.checked
+      );
+    });
+
+    const texto = document.createElement("span");
+    texto.textContent = c.nombre;
+
+    etiqueta.append(input, texto);
+
+    $("respuestas").appendChild(etiqueta);
+  });
+}
+
+// ==========================================
+// TABLERO DE PAREJAS
+// ==========================================
+
+function mostrarTableroParejas(q) {
+  const tablero = $("tableroParejas");
+
+  tablero.classList.remove("hidden");
+  $("respuestas").classList.add("hidden");
+
+  const izquierda = document.createElement("div");
+  izquierda.className = "pairs-column";
+
+  const derecha = document.createElement("div");
+  derecha.className = "pairs-column";
+
+  const t1 = document.createElement("div");
+  const t2 = document.createElement("div");
+
+  t1.className = "pairs-title";
+  t2.className = "pairs-title";
+
+  t1.textContent = "Clientes";
+  t2.textContent = "Localidades";
+
+  izquierda.appendChild(t1);
+  derecha.appendChild(t2);
+
+  barajar(q.pares).forEach(c => {
+    const b = boton(
+      c.nombre,
+      () => elegirPareja("cliente", c, b),
+      "pair-option"
+    );
+
+    izquierda.appendChild(b);
+  });
+
+  barajar(q.pares).forEach(c => {
+    const b = boton(
+      c.localidad,
+      () => elegirPareja("municipio", c, b),
+      "pair-option"
+    );
+
+    derecha.appendChild(b);
+  });
+
+  tablero.append(
+    izquierda,
+    derecha
+  );
+
+  const contador = document.createElement("p");
+  contador.className = "pair-counter";
+  contador.id = "contadorParejas";
+
+  tablero.appendChild(contador);
+
+  actualizarContadorParejas();
+}
+
+function actualizarContadorParejas() {
+  const s = sesion;
+
+  if (
+    !s ||
+    !$("contadorParejas")
+  ) return;
+
+  $("contadorParejas").textContent =
+    `Parejas encontradas: ${s.parejasAcertadas}/${s.pregunta.pares.length}` +
+    ` · Errores: ${s.erroresRonda}`;
+}
+
+// ==========================================
+// JUEGO: UNE LAS PAREJAS
+// ==========================================
+
+function elegirPareja(lado, cliente, elemento) {
+  const s = sesion;
+
+  if (
+    !s ||
+    !s.activa ||
+    s.respondida ||
+    s.bloqueoParejas ||
+    s.pregunta.tipo !== "parejas"
+  ) return;
+
+  const anterior =
+    s.parejasElegidas[lado];
+
+  if (anterior) {
+    anterior.elemento.classList.remove("selected");
+  }
+
+  s.parejasElegidas[lado] = {
+    cliente,
+    elemento
+  };
+
+  elemento.classList.add("selected");
+
+  const izq = s.parejasElegidas.cliente;
+  const der = s.parejasElegidas.municipio;
+
+  if (!izq || !der) return;
+
+  const coinciden =
+    normalizar(izq.cliente.localidad) ===
+    normalizar(der.cliente.localidad);
+
+  if (coinciden) {
+    izq.elemento.classList.remove("selected");
+    der.elemento.classList.remove("selected");
+
+    izq.elemento.classList.add("matched");
+    der.elemento.classList.add("matched");
+
+    izq.elemento.disabled = true;
+    der.elemento.disabled = true;
+
+    s.parejasElegidas = {
+      cliente: null,
+      municipio: null
+    };
+
+    s.parejasAcertadas++;
+
+    sumarAcierto(
+      izq.cliente,
+      75
+    );
+
+    actualizarContadorParejas();
+
+    if (
+      s.parejasAcertadas ===
+      s.pregunta.pares.length
+    ) {
+      s.respondida = true;
+
+      if (s.erroresRonda === 0) {
+        s.aciertos++;
+      }
+
+      mostrarFeedback(
+        true,
+        `¡Tablero completado! ${s.parejasAcertadas} parejas. ` +
+        (
+          s.erroresRonda
+            ? `Errores: ${s.erroresRonda}.`
+            : "¡Sin errores!"
+        )
       );
 
-      b.dataset.valor = normalizar(op);
-      cont.appendChild(b);
-    });
+      cerrarPregunta();
+    }
 
   } else {
-    q.opciones.forEach(c => {
-      const label = document.createElement("label");
-      label.className = "answer";
+    s.erroresRonda++;
+    s.errores++;
+    s.racha = 0;
 
-      const check = document.createElement("input");
-      check.type = "checkbox";
-      check.value = c.id;
-      check.style.width = "auto";
-      check.style.marginRight = "9px";
+    registrarAprendizaje(
+      izq.cliente,
+      false
+    );
 
-      check.addEventListener("change", () => {
-        label.classList.toggle(
-          "selected",
-          check.checked
-        );
-      });
+    s.puntos = Math.max(
+      0,
+      s.puntos - 10
+    );
 
-      const span = document.createElement("span");
-      span.textContent =
-        `${c.nombre} · ${c.localidad || "Sin municipio"}`;
+    actualizarPuntuacion();
+    actualizarContadorParejas();
 
-      label.append(check, span);
-      cont.appendChild(label);
-    });
+    s.bloqueoParejas = true;
+
+    const numero = s.numero;
+
+    s.espera = setTimeout(() => {
+      if (
+        sesion !== s ||
+        !s.activa ||
+        s.numero !== numero
+      ) return;
+
+      izq.elemento.classList.remove("selected");
+      der.elemento.classList.remove("selected");
+
+      s.parejasElegidas = {
+        cliente: null,
+        municipio: null
+      };
+
+      s.bloqueoParejas = false;
+
+    }, 380);
   }
 }
 
-// ================================
-// PUNTUACIÓN Y PROGRESO
-// ================================
+// ==========================================
+// PROGRESO DE APRENDIZAJE
+// ==========================================
 
-function apuntarResultado(cliente, correcto, puntos) {
-  if (!sesion || sesion.respondida) return;
+function registrarAprendizaje(cliente, correcto) {
+  const clave = claveCliente(cliente);
 
-  sesion.respondida = true;
-  sesion.puntos += puntos;
+  const anterior =
+    estadisticas.aprendizaje[clave] ||
+    estadisticas.aprendizaje[cliente.id] ||
+    {aciertos: 0, fallos: 0};
 
-  if (correcto) {
-    sesion.aciertos++;
-    sesion.racha++;
-    estadisticas.aciertos++;
-  } else {
-    sesion.racha = 0;
-  }
-
-  const registro =
-    estadisticas.aprendizaje[cliente.id] || {
-      aciertos: 0,
-      fallos: 0
-    };
+  const registro = {
+    aciertos: Number(anterior.aciertos) || 0,
+    fallos: Number(anterior.fallos) || 0
+  };
 
   if (correcto) {
     registro.aciertos++;
@@ -1403,45 +2045,141 @@ function apuntarResultado(cliente, correcto, puntos) {
     registro.fallos++;
   }
 
-  estadisticas.aprendizaje[cliente.id] =
-    registro;
+  estadisticas.aprendizaje[clave] = registro;
 
   persistirEstadisticas();
+}
+
+function actualizarPuntuacion() {
+  if (!sesion) return;
 
   $("puntosJuego").textContent =
     `${sesion.puntos} puntos`;
 
   $("rachaJuego").textContent =
     `Racha: ${sesion.racha}`;
-
-  $("btnSiguiente").textContent =
-    sesion.indice + 1 === sesion.total
-      ? "Ver resultados →"
-      : "Siguiente pregunta →";
-
-  $("btnSiguiente").classList.remove("hidden");
-
-  $("barraProgreso").style.width =
-    `${(sesion.indice + 1) / sesion.total * 100}%`;
 }
 
-// ================================
-// COMPROBAR JUEGO 1
-// ================================
+function sumarAcierto(cliente, puntos) {
+  if (
+    !sesion ||
+    !sesion.activa
+  ) return;
+
+  sesion.puntos += puntos;
+  sesion.racha++;
+
+  estadisticas.aciertos++;
+
+  registrarAprendizaje(
+    cliente,
+    true
+  );
+
+  actualizarPuntuacion();
+}
+
+function registrarRonda(cliente, correcto, puntos) {
+  if (
+    !sesion ||
+    !sesion.activa ||
+    sesion.respondida
+  ) return;
+
+  sesion.respondida = true;
+
+  if (correcto) {
+    sesion.aciertos++;
+
+    sumarAcierto(
+      cliente,
+      puntos
+    );
+
+  } else {
+    sesion.puntos += puntos;
+    sesion.racha = 0;
+    sesion.errores++;
+
+    registrarAprendizaje(
+      cliente,
+      false
+    );
+
+    actualizarPuntuacion();
+  }
+
+  cerrarPregunta();
+}
+
+function mostrarFeedback(bien, texto) {
+  $("resultadoPregunta").className =
+    `feedback ${bien ? "good" : "bad"}`;
+
+  $("resultadoPregunta").textContent = texto;
+}
+
+function cerrarPregunta() {
+  const s = sesion;
+
+  if (!s) return;
+
+  if (s.total !== null) {
+    $("barraProgreso").style.width =
+      `${100 * (s.indice + 1) / s.total}%`;
+  }
+
+  if (s.modo === "tiempo") {
+    const numero = s.numero;
+
+    s.espera = setTimeout(() => {
+      if (
+        sesion !== s ||
+        !s.activa ||
+        s.numero !== numero
+      ) return;
+
+      s.indice++;
+      nuevaPregunta();
+
+    }, 600);
+
+  } else {
+    $("btnSiguiente").textContent =
+      (s.indice + 1 === s.total)
+        ? "Ver resultados →"
+        : "Siguiente pregunta →";
+
+    $("btnSiguiente").classList.remove("hidden");
+  }
+}
+
+// ==========================================
+// JUEGO: ADIVINA LA LOCALIDAD
+// ==========================================
 
 function responderLocalidad(valor) {
-  if (!sesion || sesion.respondida) return;
+  const s = sesion;
 
-  const q = sesion.pregunta;
+  if (
+    !s ||
+    !s.activa ||
+    s.respondida
+  ) return;
 
-  const acierto =
-    normalizar(valor) === normalizar(q.correcta);
+  const q = s.pregunta;
 
-  const puntos = acierto
-    ? 100 + Math.min(50, sesion.racha * 10)
+  const correcto =
+    normalizar(valor) ===
+    normalizar(q.correcta);
+
+  const puntos = correcto
+    ? 100 + Math.min(50, s.racha * 10)
     : 0;
 
-  [...$("respuestas").children].forEach(b => {
+  Array.from(
+    $("respuestas").children
+  ).forEach(b => {
     b.disabled = true;
 
     if (
@@ -1459,36 +2197,44 @@ function responderLocalidad(valor) {
   });
 
   mostrarFeedback(
-    acierto,
-    acierto
+    correcto,
+    correcto
       ? `¡Correcto! +${puntos} puntos.`
-      : `Respuesta correcta: ${q.correcta}.`
+      : `Era ${q.correcta}. ${q.objetivo.nombre} está en ${q.correcta}.`
   );
 
-  dibujarMiniMapa(true);
+  if (s.modo !== "tiempo") {
+    dibujarMiniMapa(true);
+  }
 
-  apuntarResultado(
+  registrarRonda(
     q.objetivo,
-    acierto,
+    correcto,
     puntos
   );
 }
 
-// ================================
-// COMPROBAR JUEGO 2
-// ================================
+// ==========================================
+// JUEGO: DOMINA LAS ZONAS
+// ==========================================
 
 function responderZonas() {
-  if (!sesion || sesion.respondida) return;
+  const s = sesion;
 
-  const q = sesion.pregunta;
+  if (
+    !s ||
+    !s.activa ||
+    s.respondida ||
+    s.pregunta.tipo !== "zonas"
+  ) return;
+
+  const q = s.pregunta;
 
   const seleccionados = new Set(
-    [
-      ...$("respuestas").querySelectorAll(
-        "input:checked"
-      )
-    ].map(x => x.value)
+    Array.from(
+      $("respuestas").querySelectorAll("input:checked"),
+      x => x.value
+    )
   );
 
   const exacto =
@@ -1497,87 +2243,140 @@ function responderZonas() {
       id => seleccionados.has(id)
     );
 
-  const aciertos = [...q.correctos].filter(
+  const hits = [...q.correctos].filter(
     id => seleccionados.has(id)
   ).length;
 
-  const fallos = [...seleccionados].filter(
+  const misses = [...seleccionados].filter(
     id => !q.correctos.has(id)
   ).length;
 
   const puntos = exacto
-    ? 150 + Math.min(50, sesion.racha * 10)
-    : Math.max(
-        0,
-        aciertos * 35 - fallos * 20
-      );
+    ? 150 + Math.min(50, s.racha * 10)
+    : Math.max(0, hits * 35 - misses * 20);
 
-  [
-    ...$("respuestas").querySelectorAll("label")
-  ].forEach(label => {
-    const input = label.querySelector("input");
+  Array.from(
+    $("respuestas").querySelectorAll("label")
+  ).forEach(etiqueta => {
+    const input = etiqueta.querySelector("input");
 
     input.disabled = true;
-
-    label.classList.remove("selected");
+    etiqueta.classList.remove("selected");
 
     if (q.correctos.has(input.value)) {
-      label.classList.add("correct");
+      etiqueta.classList.add("correct");
 
     } else if (seleccionados.has(input.value)) {
-      label.classList.add("wrong");
+      etiqueta.classList.add("wrong");
     }
   });
 
   const nombres = q.opciones
     .filter(x => q.correctos.has(x.id))
-    .map(
-      x =>
-        `${x.nombre} (${distanciaKm(q.objetivo, x).toFixed(1)} km)`
+    .map(x =>
+      `${x.nombre} (${distanciaKm(q.objetivo, x).toFixed(1)} km)`
     );
 
   mostrarFeedback(
     exacto,
-    (
-      exacto
-        ? "¡Zona dominada!"
-        : "Repasemos los clientes cercanos."
-    ) +
-    ` +${puntos} puntos.\n` +
-    `Entre las opciones, a ${q.radio} km o menos: ` +
-    `${nombres.join(" · ")}.`
+    `${exacto ? "¡Zona dominada!" : "Repasa estos vecinos."} +${puntos} puntos.\n` +
+    `Las opciones cercanas eran: ${nombres.join(" · ")}.`
   );
 
   $("btnConfirmarZona").classList.add("hidden");
 
   dibujarMiniMapa(true);
 
-  apuntarResultado(
+  registrarRonda(
     q.objetivo,
     exacto,
     puntos
   );
 }
 
-function mostrarFeedback(bien, mensaje) {
-  const panel = $("resultadoPregunta");
+// ==========================================
+// JUEGO: ENCUENTRA AL CLIENTE
+// ==========================================
 
-  panel.className =
-    `feedback ${bien ? "good" : "bad"}`;
+function seleccionarPuntoJuego(e) {
+  const s = sesion;
 
-  panel.textContent = mensaje;
+  if (
+    !s ||
+    !s.activa ||
+    s.respondida ||
+    s.pregunta.tipo !== "ubicar"
+  ) return;
+
+  s.puntoElegido = {
+    lat: e.latlng.lat,
+    lng: e.latlng.lng
+  };
+
+  $("btnConfirmarPunto").disabled = false;
+
+  $("mapaJuegoTitulo").textContent =
+    "Punto elegido. Puedes cambiarlo pulsando " +
+    "otra ubicación o confirmar tu respuesta.";
+
+  dibujarMiniMapa(false);
 }
 
-// ================================
-// MAPA INTERACTIVO DE LOS JUEGOS
-// ================================
+function responderUbicar() {
+  const s = sesion;
+
+  if (
+    !s ||
+    !s.activa ||
+    s.respondida ||
+    s.pregunta.tipo !== "ubicar" ||
+    !s.puntoElegido
+  ) return;
+
+  const q = s.pregunta;
+
+  const km = distanciaKm(
+    s.puntoElegido,
+    q.objetivo
+  );
+
+  const puntos =
+    km <= 2 ? 200 :
+    km <= 5 ? 150 :
+    km <= 12 ? 100 :
+    km <= 25 ? 50 : 0;
+
+  const correcto = km <= 12;
+
+  $("btnConfirmarPunto").classList.add("hidden");
+
+  mostrarFeedback(
+    correcto,
+    `Te has quedado a ${km.toFixed(1)} km de ${q.objetivo.nombre} ` +
+    `(${q.objetivo.localidad || "ubicación guardada"}). +${puntos} puntos.\n` +
+    "El marcador verde indica la posición real; " +
+    "el naranja, tu respuesta."
+  );
+
+  dibujarMiniMapa(true);
+
+  registrarRonda(
+    q.objetivo,
+    correcto,
+    puntos
+  );
+}
+
+// ==========================================
+// MAPAS DE LOS JUEGOS
+// ==========================================
 
 function obtenerMiniMapa() {
   if (!mapaJuego) {
     mapaJuego = L.map(
       "mapaJuego",
       {zoomControl: true}
-    ).setView(CENTRO, 10);
+    ).setView(CENTRO, 9);
 
     L.tileLayer(
       TILE_URL,
@@ -1587,16 +2386,35 @@ function obtenerMiniMapa() {
     capasJuego = L.layerGroup().addTo(
       mapaJuego
     );
+
+    mapaJuego.on(
+      "click",
+      seleccionarPuntoJuego
+    );
   }
 
   return mapaJuego;
 }
 
 function dibujarMiniMapa(revelar) {
-  const q = sesion.pregunta;
+  const s = sesion;
+
+  if (
+    !s ||
+    !s.activa
+  ) return;
+
+  const q = s.pregunta;
 
   const mostrar =
-    sesion.tipo === "zonas" || revelar;
+    q.tipo === "ubicar" ||
+    q.tipo === "zonas" ||
+    (
+      q.tipo === "localidad" &&
+      revelar &&
+      s.modo !== "tiempo" &&
+      hayCoordenadas(q.objetivo)
+    );
 
   $("mapaJuegoWrap").classList.toggle(
     "hidden",
@@ -1605,42 +2423,54 @@ function dibujarMiniMapa(revelar) {
 
   if (!mostrar) return;
 
-  $("mapaJuegoTitulo").textContent =
-    sesion.tipo === "zonas"
-      ? `Zona de ${q.objetivo.nombre}: radio de ${q.radio} km en línea recta.`
-      : `Ubicación de ${q.objetivo.nombre} en ${q.objetivo.localidad}.`;
+  $("mapaJuegoWrap").classList.toggle(
+    "locate",
+    q.tipo === "ubicar"
+  );
+
+  if (q.tipo === "zonas") {
+    $("mapaJuegoTitulo").textContent =
+      `Zona de ${q.objetivo.nombre}, radio ${q.radio} km.`;
+
+  } else if (q.tipo === "localidad") {
+    $("mapaJuegoTitulo").textContent =
+      `Ubicación de ${q.objetivo.nombre} · ${q.objetivo.localidad}.`;
+
+  } else if (!s.puntoElegido) {
+    $("mapaJuegoTitulo").textContent =
+      "Pulsa en el mapa donde creas que está " +
+      "el cliente. Puedes hacer zoom.";
+  }
 
   obtenerMiniMapa();
 
+  const numero = s.numero;
+
   setTimeout(() => {
-    if (!sesion) return;
+    if (
+      sesion !== s ||
+      !s.activa ||
+      s.numero !== numero
+    ) return;
 
     mapaJuego.invalidateSize();
     capasJuego.clearLayers();
 
     const c = q.objetivo;
 
-    if (sesion.tipo === "localidad") {
-      if (hayCoordenadas(c)) {
-        L.marker(
-          [c.lat, c.lng]
-        ).addTo(capasJuego).bindPopup(
-          popupSeguro(c.nombre)
-        );
+    if (q.tipo === "localidad") {
+      L.marker(
+        [c.lat, c.lng]
+      ).addTo(capasJuego).bindPopup(
+        popupSeguro(`${c.nombre} · ${c.localidad}`)
+      );
 
-        mapaJuego.setView(
-          [c.lat, c.lng],
-          12
-        );
+      mapaJuego.setView(
+        [c.lat, c.lng],
+        12
+      );
 
-      } else {
-        mapaJuego.setView(CENTRO, 9);
-
-        $("mapaJuegoTitulo").textContent =
-          "Este cliente no tiene coordenadas GPS guardadas.";
-      }
-
-    } else {
+    } else if (q.tipo === "zonas") {
       const circulo = L.circle(
         [c.lat, c.lng],
         {
@@ -1660,15 +2490,13 @@ function dibujarMiniMapa(revelar) {
 
       if (revelar) {
         q.opciones
-          .filter(
-            x => q.correctos.has(x.id)
-          )
+          .filter(x => q.correctos.has(x.id))
           .forEach(x => {
             L.circleMarker(
               [x.lat, x.lng],
               {
                 radius: 7,
-                color: "#ffffff",
+                color: "white",
                 weight: 2,
                 fillColor: "#159867",
                 fillOpacity: 1
@@ -1684,54 +2512,153 @@ function dibujarMiniMapa(revelar) {
       mapaJuego.fitBounds(
         circulo.getBounds(),
         {
-          padding: [15, 15]
+          padding: [20, 20]
         }
       );
+
+    } else if (q.tipo === "ubicar") {
+      if (s.puntoElegido) {
+        L.circleMarker(
+          [
+            s.puntoElegido.lat,
+            s.puntoElegido.lng
+          ],
+          {
+            radius: 9,
+            color: "white",
+            weight: 2,
+            fillColor: "#e77d22",
+            fillOpacity: 1
+          }
+        ).addTo(capasJuego).bindPopup(
+          popupSeguro("Tu respuesta")
+        );
+      }
+
+      if (revelar) {
+        L.circleMarker(
+          [c.lat, c.lng],
+          {
+            radius: 9,
+            color: "white",
+            weight: 2,
+            fillColor: "#11945f",
+            fillOpacity: 1
+          }
+        ).addTo(capasJuego).bindPopup(
+          popupSeguro(
+            `Ubicación real: ${c.nombre}`
+          )
+        );
+
+        L.polyline(
+          [
+            [c.lat, c.lng],
+            [
+              s.puntoElegido.lat,
+              s.puntoElegido.lng
+            ]
+          ],
+          {
+            color: "#ed7c21",
+            weight: 3,
+            dashArray: "6,7"
+          }
+        ).addTo(capasJuego);
+
+        mapaJuego.fitBounds(
+          L.latLngBounds([
+            [c.lat, c.lng],
+            [
+              s.puntoElegido.lat,
+              s.puntoElegido.lng
+            ]
+          ]),
+          {
+            padding: [35, 35],
+            maxZoom: 12
+          }
+        );
+
+      } else if (!s.puntoElegido) {
+        const posiciones = s.listaCoord.map(
+          x => [x.lat, x.lng]
+        );
+
+        mapaJuego.fitBounds(
+          L.latLngBounds(posiciones),
+          {
+            padding: [15, 15],
+            maxZoom: 10
+          }
+        );
+      }
     }
-  }, 90);
+  }, 85);
 }
 
-// ================================
-// FINAL DE LA PARTIDA
-// ================================
+// ==========================================
+// FINALIZAR PARTIDA
+// ==========================================
 
-function terminarJuego() {
-  if (!sesion) return;
+function terminarJuego(porTiempo = false) {
+  const s = sesion;
 
-  const tipo = sesion.tipo;
+  if (
+    !s ||
+    !s.activa
+  ) return;
+
+  s.activa = false;
+
+  detenerRelojes();
 
   estadisticas.partidas++;
 
   estadisticas.record = Math.max(
-    estadisticas.record || 0,
-    sesion.puntos
+    Number(estadisticas.record) || 0,
+    s.puntos
   );
 
   persistirEstadisticas();
 
   $("zonaPregunta").classList.add("hidden");
+  $("relojJuego").classList.add("hidden");
 
   const resumen = $("resumenJuego");
-
-  resumen.classList.remove("hidden");
   resumen.replaceChildren();
+  resumen.classList.remove("hidden");
 
-  const medalla = document.createElement("div");
-  medalla.className = "medal";
-  medalla.textContent =
-    sesion.aciertos >= Math.ceil(sesion.total * .8)
+  const icono = document.createElement("div");
+  icono.className = "medal";
+
+  icono.textContent =
+    s.aciertos >= Math.ceil(
+      (s.total || (s.indice || 1)) * .8
+    )
       ? "🏆"
       : "🎯";
 
   const titulo = document.createElement("h3");
-  titulo.textContent = "¡Partida terminada!";
+
+  titulo.textContent = porTiempo
+    ? "¡Tiempo terminado!"
+    : "¡Partida terminada!";
+
+  const puntuacion = document.createElement("div");
+  puntuacion.className = "finish-score";
+  puntuacion.textContent = `${s.puntos} puntos`;
 
   const detalle = document.createElement("p");
+
+  const contador = s.total === null
+    ? s.indice + (s.respondida ? 1 : 0)
+    : s.total;
+
   detalle.textContent =
-    `${sesion.aciertos} de ${sesion.total} rondas perfectas · ` +
-    `${sesion.puntos} puntos. ` +
-    "Los clientes que falles tendrán más posibilidades " +
-    "de aparecer en próximas partidas.";
+    `${s.aciertos} rondas perfectas de ${contador} completadas. ` +
+    `${s.errores} errores. Los clientes que te cuestan ` +
+    "volverán a aparecer en otras partidas.";
 
   const acciones = document.createElement("div");
   acciones.className = "finish-buttons";
@@ -1739,7 +2666,7 @@ function terminarJuego() {
   acciones.append(
     boton(
       "Volver a jugar",
-      () => iniciarJuego(tipo),
+      () => iniciarJuego(s.modo),
       "btn primary"
     ),
     boton(
@@ -1750,8 +2677,9 @@ function terminarJuego() {
   );
 
   resumen.append(
-    medalla,
+    icono,
     titulo,
+    puntuacion,
     detalle,
     acciones
   );
@@ -1759,14 +2687,14 @@ function terminarJuego() {
   refrescarEstadisticas();
 }
 
-// ================================
+// ==========================================
 // EVENTOS
-// ================================
+// ==========================================
 
-$("navMapa").addEventListener(
-  "click",
-  () => mostrarVista("mapa")
-);
+$("navMapa").addEventListener("click", () => {
+  volverCatalogo();
+  mostrarVista("mapa");
+});
 
 $("navJuegos").addEventListener(
   "click",
@@ -1783,14 +2711,11 @@ $("btnCerrar").addEventListener(
   cerrarFormulario
 );
 
-$("modalCliente").addEventListener(
-  "click",
-  e => {
-    if (e.target === $("modalCliente")) {
-      cerrarFormulario();
-    }
+$("modalCliente").addEventListener("click", e => {
+  if (e.target === $("modalCliente")) {
+    cerrarFormulario();
   }
-);
+});
 
 $("formCliente").addEventListener(
   "submit",
@@ -1822,10 +2747,9 @@ $("btnCentrar").addEventListener(
   verTodos
 );
 
-$("btnExcel").addEventListener(
-  "click",
-  () => $("archivoExcel").click()
-);
+$("btnExcel").addEventListener("click", () => {
+  $("archivoExcel").click();
+});
 
 $("archivoExcel").addEventListener(
   "change",
@@ -1837,24 +2761,21 @@ $("btnExportar").addEventListener(
   exportarJSON
 );
 
-$("btnImportar").addEventListener(
-  "click",
-  () => $("archivoImportar").click()
-);
+$("btnImportar").addEventListener("click", () => {
+  $("archivoImportar").click();
+});
 
 $("archivoImportar").addEventListener(
   "change",
   importarJSON
 );
 
-document.querySelectorAll("[data-juego]").forEach(
-  b => {
-    b.addEventListener(
-      "click",
-      () => iniciarJuego(b.dataset.juego)
-    );
-  }
-);
+document.querySelectorAll("[data-juego]").forEach(b => {
+  b.addEventListener(
+    "click",
+    () => iniciarJuego(b.dataset.juego)
+  );
+});
 
 $("btnSalirPartida").addEventListener(
   "click",
@@ -1866,39 +2787,41 @@ $("btnConfirmarZona").addEventListener(
   responderZonas
 );
 
-$("btnSiguiente").addEventListener(
+$("btnConfirmarPunto").addEventListener(
   "click",
-  () => {
-    if (!sesion || !sesion.respondida) return;
-
-    sesion.indice++;
-    siguientePregunta();
-  }
+  responderUbicar
 );
 
-document.addEventListener(
-  "keydown",
-  e => {
-    if (e.key !== "Escape") return;
+$("btnSiguiente").addEventListener("click", () => {
+  if (
+    !sesion ||
+    !sesion.activa ||
+    !sesion.respondida
+  ) return;
 
-    if (seleccionandoPunto) {
-      seleccionandoPunto = false;
+  sesion.indice++;
+  nuevaPregunta();
+});
 
-      $("modalCliente").classList.remove("hidden");
+document.addEventListener("keydown", e => {
+  if (e.key !== "Escape") return;
 
-      mapa.getContainer().style.cursor = "";
+  if (seleccionandoPunto) {
+    seleccionandoPunto = false;
 
-    } else if (
-      !$("modalCliente").classList.contains("hidden")
-    ) {
-      cerrarFormulario();
-    }
+    $("modalCliente").classList.remove("hidden");
+    mapa.getContainer().style.cursor = "";
+
+  } else if (
+    !$("modalCliente").classList.contains("hidden")
+  ) {
+    cerrarFormulario();
   }
-);
+});
 
-// ================================
-// INICIO
-// ================================
+// ==========================================
+// INICIALIZACIÓN
+// ==========================================
 
 leerDatos();
 
@@ -1910,4 +2833,4 @@ setTimeout(() => {
   }
 }, 180);
 
-console.log("MAPA V1.2 listo");
+console.log("MAPA V1.3 listo");
