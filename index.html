@@ -4,208 +4,308 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>MAPA | Clientes</title>
-
-  <link rel="stylesheet"
-    href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
-
+  <title>MAPA | Aprende tus clientes</title>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
   <link rel="stylesheet" href="assets/style.css">
 </head>
 <body>
-
-<header class="topbar">
-  <div class="brand">
-    <span class="brand-icon">📍</span>
-    <div>
-      <h1>MAPA</h1>
-      <small>Localización clientes</small>
-    </div>
-  </div>
-  <span class="version">V1.1</span>
-</header>
-
-<main class="layout">
-
-  <aside class="sidebar">
-
-    <section class="panel">
-      <h2>Panel principal</h2>
-      <p class="muted">
-        Consulta y administra tus puntos de carga.
-      </p>
-
-      <div class="stats">
-        <div class="stat">
-          <strong id="totalClientes">0</strong>
-          <span>Clientes</span>
-        </div>
-        <div class="stat">
-          <strong id="totalLocalidades">0</strong>
-          <span>Municipios</span>
-        </div>
-        <div class="stat">
-          <strong id="totalUbicados">0</strong>
-          <span>Ubicados</span>
-        </div>
-        <div class="stat">
-          <strong id="totalPendientes">0</strong>
-          <span>Pendientes</span>
-        </div>
-      </div>
-
-      <button id="btnNuevo" class="btn primary">
-        + Añadir cliente manualmente
-      </button>
-    </section>
-
-    <section class="panel">
-      <h2>Importar clientes</h2>
-      <p class="muted">
-        Sube tu Excel para colocar automáticamente
-        los clientes que tengan coordenadas.
-      </p>
-
-      <button id="btnExcel" class="btn primary">
-        📊 Importar Excel
-      </button>
-
-      <input type="file" id="archivoExcel"
-        accept=".xlsx,.xls" hidden>
-
-      <p class="help">
-        Se utilizará la pestaña CLIENTES.
-        Los clientes añadidos manualmente se conservarán.
-      </p>
-    </section>
-
-    <section class="panel">
-      <h2>Mis clientes</h2>
-
-      <input id="buscarCliente" type="search"
-        placeholder="Buscar cliente o municipio..."
-        autocomplete="off">
-
-      <select id="filtroClientes">
-        <option value="todos">Todos los clientes</option>
-        <option value="ubicados">Con ubicación</option>
-        <option value="pendientes">Sin ubicación</option>
-      </select>
-
-      <div id="listaClientes" class="client-list"></div>
-    </section>
-
-    <section class="panel">
-      <h2>Aprendizaje</h2>
-      <p class="muted">
-        Próximamente incorporaremos los juegos
-        para aprender la ubicación de cada cliente.
-      </p>
-      <button class="btn secondary" disabled>
-        🎮 Juegos (próximamente)
-      </button>
-    </section>
-
-    <section class="panel">
-      <h2>Copias de seguridad</h2>
-
-      <div class="backup-buttons">
-        <button id="btnExportar" class="btn secondary">
-          Exportar clientes
-        </button>
-        <button id="btnImportar" class="btn secondary">
-          Importar copia JSON
-        </button>
-      </div>
-
-      <input type="file" id="archivoImportar"
-        accept=".json,application/json" hidden>
-    </section>
-
-  </aside>
-
-  <section class="map-section">
-    <div class="map-toolbar">
+  <header class="topbar">
+    <div class="brand">
+      <span class="logo">📍</span>
       <div>
-        <h2>Mapa de clientes</h2>
-        <p>Valencia y Castellón </p>
+        <h1>MAPA</h1>
+        <small>Conoce tus clientes, domina las zonas</small>
       </div>
-      <button id="btnCentrar" class="btn secondary">
-        ⌖ Ver todos
-      </button>
     </div>
+    <nav class="topnav" aria-label="Navegación">
+      <button id="navMapa" class="navbtn active" type="button">🗺️ Mapa</button>
+      <button id="navJuegos" class="navbtn" type="button">🎮 Juegos</button>
+    </nav>
+  </header>
 
-    <div id="map"></div>
+  <main>
+    <section id="vistaMapa" class="layout">
+      <aside class="sidebar">
 
-    <div class="map-footer">
-      <span>📍 Selecciona un cliente para localizarlo</span>
-      <span id="mapStatus">Mapa preparado</span>
-    </div>
-  </section>
+        <section class="panel">
+          <div class="section-title">
+            <h2>Mis clientes</h2>
+            <span class="pill">V1.2</span>
+          </div>
+          <p class="muted">Tus ubicaciones de Valencia y Castellón.</p>
+          <div class="stats">
+            <div class="stat">
+              <strong id="totalClientes">0</strong>
+              <span>Clientes</span>
+            </div>
+            <div class="stat">
+              <strong id="totalLocalidades">0</strong>
+              <span>Municipios</span>
+            </div>
+            <div class="stat">
+              <strong id="totalUbicados">0</strong>
+              <span>Ubicados</span>
+            </div>
+            <div class="stat">
+              <strong id="totalPendientes">0</strong>
+              <span>Pendientes</span>
+            </div>
+          </div>
+          <button class="btn primary full" id="btnNuevo" type="button">
+            + Añadir cliente manualmente
+          </button>
+        </section>
 
-</main>
+        <section class="panel">
+          <h2>Importar Excel</h2>
+          <p class="muted">
+            Carga tu archivo con las columnas CLIENTE,
+            MUNICIPIO, LOCALIDAD y COORDENADAS.
+          </p>
+          <button class="btn primary full" id="btnExcel" type="button">
+            📊 Importar clientes
+          </button>
+          <input id="archivoExcel" type="file" accept=".xlsx,.xls" hidden>
+          <p class="hint">
+            Se utiliza la pestaña CLIENTES.
+            Los clientes manuales se conservan.
+          </p>
+        </section>
 
-<div id="modalCliente" class="modal hidden">
-  <div class="modal-content">
+        <section class="panel">
+          <h2>Buscar clientes</h2>
+          <input id="buscarCliente" type="search"
+            placeholder="Nombre o localidad…"
+            aria-label="Buscar clientes">
+          <select id="filtroClientes" aria-label="Filtrar clientes">
+            <option value="todos">Todos</option>
+            <option value="ubicados">Con ubicación</option>
+            <option value="pendientes">Pendientes</option>
+          </select>
+          <div id="listaClientes" class="client-list"></div>
+        </section>
 
-    <div class="modal-header">
-      <h2 id="modalTitulo">Añadir cliente</h2>
-      <button id="btnCerrar" class="close-btn"
-        aria-label="Cerrar">×</button>
-    </div>
+        <section class="panel">
+          <h2>Copias de seguridad</h2>
+          <div class="button-stack">
+            <button class="btn secondary" id="btnExportar" type="button">
+              Exportar clientes (JSON)
+            </button>
+            <button class="btn secondary" id="btnImportar" type="button">
+              Importar copia (JSON)
+            </button>
+          </div>
+          <input id="archivoImportar" type="file"
+            accept=".json,application/json" hidden>
+          <p class="hint">
+            Los datos se guardan solo en este navegador.
+            Exporta una copia de vez en cuando.
+          </p>
+        </section>
+      </aside>
 
-    <form id="formCliente">
+      <section class="map-panel">
+        <div class="map-head">
+          <div>
+            <h2>Mapa de clientes</h2>
+            <p>Carreteras y localidades · Sin clave API</p>
+          </div>
+          <button class="btn secondary" id="btnCentrar" type="button">
+            ⌖ Ver todos
+          </button>
+        </div>
+        <div id="map" aria-label="Mapa interactivo de clientes"></div>
+        <div class="map-foot">
+          <span>📍 Pulsa un marcador para ver sus clientes.</span>
+          <span id="mapStatus">Mapa preparado</span>
+        </div>
+      </section>
+    </section>
 
-      <label for="nombreCliente">Nombre del cliente</label>
-      <input id="nombreCliente" type="text"
-        placeholder="Ej. FRIOSILLA" maxlength="120"
-        required>
-
-      <label for="localidadCliente">Municipio</label>
-      <input id="localidadCliente" type="text"
-        placeholder="Ej. Silla" maxlength="120">
-
-      <label for="provinciaCliente">Provincia</label>
-      <select id="provinciaCliente">
-        <option value="Valencia">Valencia</option>
-        <option value="Castellón">Castellón</option>
-      </select>
-
-      <div class="location-info">
-        <strong>Ubicación</strong>
-        <p id="textoUbicacion">
-          Busca el municipio o selecciona un punto
-          directamente en el mapa.
+    <section id="vistaJuegos" class="games-page hidden">
+      <div class="games-intro">
+        <span class="eyebrow">CENTRO DE APRENDIZAJE</span>
+        <h2>Aprende jugando</h2>
+        <p>
+          Preguntas creadas automáticamente con tus clientes reales.
+          Cada partida te ayuda a recordar sus ubicaciones.
         </p>
+        <div class="game-stats">
+          <div>
+            <strong id="statsPartidas">0</strong>
+            <span>Partidas</span>
+          </div>
+          <div>
+            <strong id="statsAciertos">0</strong>
+            <span>Respuestas correctas</span>
+          </div>
+          <div>
+            <strong id="statsRecord">0</strong>
+            <span>Récord de puntos</span>
+          </div>
+        </div>
       </div>
 
-      <div class="modal-actions">
-        <button type="button" id="btnBuscarLocalidad"
-          class="btn secondary">
-          🔎 Buscar
-        </button>
-        <button type="button" id="btnElegirMapa"
-          class="btn secondary">
-          📍 Elegir en mapa
-        </button>
+      <div id="catalogoJuegos" class="game-grid">
+        <article class="game-card">
+          <div class="game-icon">🏘️</div>
+          <h3>Adivina la localidad</h3>
+          <p>
+            Aparece un cliente. Elige en qué municipio
+            se encuentra entre varias respuestas.
+          </p>
+          <button class="btn primary" data-juego="localidad" type="button">
+            Jugar ahora
+          </button>
+        </article>
+
+        <article class="game-card">
+          <div class="game-icon">🎯</div>
+          <h3>Domina las zonas</h3>
+          <p>
+            Descubre qué clientes están cerca de otros.
+            Selecciona todos los que estén dentro de una distancia real.
+          </p>
+          <button class="btn primary" data-juego="zonas" type="button">
+            Jugar ahora
+          </button>
+        </article>
+
+        <article class="game-card soon">
+          <div class="game-icon">📍</div>
+          <h3>Encuentra al cliente</h3>
+          <p>Marca su ubicación sobre el mapa.</p>
+          <span class="coming">Próximamente</span>
+        </article>
+
+        <article class="game-card soon">
+          <div class="game-icon">⏱️</div>
+          <h3>Contrarreloj</h3>
+          <p>
+            Responde el máximo de preguntas antes
+            de que termine el tiempo.
+          </p>
+          <span class="coming">Próximamente</span>
+        </article>
+
+        <article class="game-card soon">
+          <div class="game-icon">🧩</div>
+          <h3>Une las parejas</h3>
+          <p>Empareja nombres de clientes con sus localidades.</p>
+          <span class="coming">Próximamente</span>
+        </article>
+
+        <article class="game-card soon">
+          <div class="game-icon">🏆</div>
+          <h3>Desafío final</h3>
+          <p>
+            Una combinación de los juegos
+            con puntuación acumulada.
+          </p>
+          <span class="coming">Próximamente</span>
+        </article>
       </div>
 
-      <button type="submit" class="btn primary">
-        Guardar cliente
-      </button>
-    </form>
+      <section id="partida" class="partida hidden">
+        <div class="partida-top">
+          <button id="btnSalirPartida" class="btn secondary" type="button">
+            ← Juegos
+          </button>
+          <strong id="nombreJuego">Juego</strong>
+          <span id="puntosJuego" class="score">0 puntos</span>
+        </div>
+
+        <div id="zonaPregunta">
+          <div class="progress-head">
+            <span id="contadorPregunta">Pregunta 1 de 10</span>
+            <span id="rachaJuego">Racha: 0</span>
+          </div>
+          <div class="progress-track">
+            <div id="barraProgreso" class="progress-fill"></div>
+          </div>
+
+          <h3 id="textoPregunta" class="question"></h3>
+          <p id="ayudaPregunta" class="question-help"></p>
+          <div id="respuestas" class="answers"></div>
+
+          <button id="btnConfirmarZona"
+            class="btn primary confirm hidden" type="button">
+            Comprobar respuestas
+          </button>
+
+          <div id="mapaJuegoWrap" class="game-map-wrap hidden">
+            <p id="mapaJuegoTitulo" class="map-caption"></p>
+            <div id="mapaJuego"></div>
+          </div>
+
+          <div id="resultadoPregunta"
+            class="feedback hidden" role="status"></div>
+
+          <button id="btnSiguiente"
+            class="btn primary next hidden" type="button">
+            Siguiente pregunta →
+          </button>
+        </div>
+
+        <div id="resumenJuego" class="game-finish hidden"></div>
+      </section>
+    </section>
+  </main>
+
+  <div id="modalCliente" class="modal hidden"
+    role="dialog" aria-modal="true"
+    aria-labelledby="modalTitulo">
+    <div class="modal-content">
+      <div class="modal-head">
+        <h2 id="modalTitulo">Añadir cliente</h2>
+        <button id="btnCerrar" type="button"
+          aria-label="Cerrar">×</button>
+      </div>
+
+      <form id="formCliente">
+        <label for="nombreCliente">Nombre del cliente</label>
+        <input id="nombreCliente" type="text"
+          maxlength="120" required placeholder="Ej. FRIOSILLA">
+
+        <label for="localidadCliente">Municipio</label>
+        <input id="localidadCliente" type="text"
+          maxlength="120" placeholder="Ej. Silla">
+
+        <label for="provinciaCliente">Provincia</label>
+        <select id="provinciaCliente">
+          <option value="Valencia">Valencia</option>
+          <option value="Castellón">Castellón</option>
+        </select>
+
+        <div class="location-box">
+          <strong>Ubicación del cliente</strong>
+          <p id="textoUbicacion">
+            Busca una localidad o elige un punto en el mapa.
+          </p>
+        </div>
+
+        <div class="two-buttons">
+          <button id="btnBuscarLocalidad"
+            class="btn secondary" type="button">
+            🔎 Ver zona
+          </button>
+          <button id="btnElegirMapa"
+            class="btn secondary" type="button">
+            📍 Elegir en mapa
+          </button>
+        </div>
+
+        <button class="btn primary full" type="submit">
+          Guardar cliente
+        </button>
+      </form>
+    </div>
   </div>
-</div>
 
-<div id="toast" class="toast hidden"></div>
+  <div id="toast" class="toast hidden" role="status"></div>
 
-<script
-  src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js">
-</script>
-
-<script
-  src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js">
-</script>
-
-<script src="assets/script.js"></script>
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+  <script src="assets/script.js"></script>
 </body>
 </html>
