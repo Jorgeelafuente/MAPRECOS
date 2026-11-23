@@ -27,16 +27,17 @@ const mapa = L.map("map").setView(
   ZOOM_INICIAL
 );
 
+
 L.tileLayer(
-  "https://server.arcgisonline.com/ArcGIS/rest/services/" +
-  "World_Imagery/MapServer/tile/{z}/{y}/{x}",
+  "https://tile.openstreetmap.org/{z}/{x}/{y}.png",
   {
     maxZoom: 19,
-    maxNativeZoom: 19,
     attribution:
-      "Imagery &copy; Esri and its imagery providers"
+      '&copy; <a href="https://www.openstreetmap.org/copyright">' +
+      'OpenStreetMap</a> contributors'
   }
 ).addTo(mapa);
+
 
 // Marcadores
 const iconoCliente = L.divIcon({
