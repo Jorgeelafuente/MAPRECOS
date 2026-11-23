@@ -1,0 +1,179 @@
+
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>MAPRECOS | Mapa de Clientes</title>
+
+  <link rel="stylesheet"
+    href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+
+  <link rel="stylesheet" href="assets/style.css">
+</head>
+<body>
+
+  <header class="topbar">
+    <div class="brand">
+      <span class="brand-icon">📍</span>
+      <div>
+        <h1>MAPRECOS</h1>
+        <small>Aprende la ubicación de tus clientes</small>
+      </div>
+    </div>
+    <span class="version">V1.0</span>
+  </header>
+
+  <main class="layout">
+
+    <aside class="sidebar">
+
+      <section class="panel">
+        <h2>Panel principal</h2>
+        <p class="muted">
+          Gestiona tus clientes y aprende dónde se encuentran.
+        </p>
+
+        <div class="stats">
+          <div class="stat">
+            <strong id="totalClientes">0</strong>
+            <span>Clientes</span>
+          </div>
+          <div class="stat">
+            <strong id="totalLocalidades">0</strong>
+            <span>Localidades</span>
+          </div>
+        </div>
+
+        <button id="btnNuevo" class="btn primary">
+          + Añadir cliente
+        </button>
+      </section>
+
+      <section class="panel">
+        <h2>Mis clientes</h2>
+
+        <input
+          type="search"
+          id="buscarCliente"
+          placeholder="Buscar cliente o localidad..."
+          autocomplete="off"
+        >
+
+        <div id="listaClientes" class="client-list">
+          <p class="empty">
+            Todavía no hay clientes registrados.
+          </p>
+        </div>
+      </section>
+
+      <section class="panel">
+        <h2>Aprendizaje</h2>
+        <p class="muted">
+          Próximamente podrás practicar con diferentes
+          juegos para memorizar las ubicaciones.
+        </p>
+        <button class="btn secondary" disabled>
+          🎮 Juegos (próximamente)
+        </button>
+      </section>
+
+      <section class="panel">
+        <h2>Copias de seguridad</h2>
+        <div class="backup-buttons">
+          <button id="btnExportar" class="btn secondary">
+            Exportar clientes
+          </button>
+          <button id="btnImportar" class="btn secondary">
+            Importar clientes
+          </button>
+        </div>
+        <input type="file" id="archivoImportar"
+          accept=".json,application/json" hidden>
+      </section>
+
+    </aside>
+
+    <section class="map-section">
+      <div class="map-toolbar">
+        <div>
+          <h2>Mapa de clientes</h2>
+          <p>Valencia y Castellón</p>
+        </div>
+        <button id="btnCentrar" class="btn secondary">
+          ⌖ Centrar mapa
+        </button>
+      </div>
+
+      <div id="map"></div>
+
+      <div class="map-footer">
+        <span>📍 Selecciona un cliente para localizarlo.</span>
+        <span id="mapStatus">Mapa preparado</span>
+      </div>
+    </section>
+
+  </main>
+
+  <div id="modalCliente" class="modal hidden">
+    <div class="modal-content">
+
+      <div class="modal-header">
+        <h2 id="modalTitulo">Añadir cliente</h2>
+        <button id="btnCerrar" class="close-btn"
+          aria-label="Cerrar">×</button>
+      </div>
+
+      <form id="formCliente">
+
+        <label for="nombreCliente">Nombre del cliente</label>
+        <input id="nombreCliente" type="text"
+          placeholder="Ej. FRIOSILLA" required maxlength="120">
+
+        <label for="localidadCliente">Localidad</label>
+        <input id="localidadCliente" type="text"
+          placeholder="Ej. Silla" required maxlength="120">
+
+        <label for="provinciaCliente">Provincia</label>
+        <select id="provinciaCliente">
+          <option value="Valencia">Valencia</option>
+          <option value="Castellón">Castellón</option>
+        </select>
+
+        <div class="location-info">
+          <strong>Ubicación del cliente</strong>
+          <p id="textoUbicacion">
+            Busca la localidad para obtener una posición
+            aproximada o selecciona un punto exacto en el mapa.
+          </p>
+        </div>
+
+        <div class="modal-actions">
+          <button type="button" id="btnBuscarLocalidad"
+            class="btn secondary">
+            🔎 Buscar localidad
+          </button>
+          <button type="button" id="btnElegirMapa"
+            class="btn secondary">
+            📍 Elegir en mapa
+          </button>
+        </div>
+
+        <button type="submit" class="btn primary">
+          Guardar cliente
+        </button>
+
+      </form>
+
+    </div>
+  </div>
+
+  <div id="toast" class="toast hidden"></div>
+
+  <script
+    src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js">
+  </script>
+  <script src="assets/script.js"></script>
+
+</body>
+</html>
